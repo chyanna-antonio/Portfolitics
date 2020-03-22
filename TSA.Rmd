@@ -1,0 +1,370 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#load libraries
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(tidyr)
+library(kableExtra)
+library(knitr)
+library(fastDummies)
+```
+
+```{r}
+#Loading original datast
+tsa_claims <- read_csv("tsa_claims.csv")
+
+#exploring data summary,  structure and types
+str(tsa_claims)
+summary(tsa_claims)
+
+```
+```{r}
+#Renaming the non-standard variables with standard names
+
+TSA_claims <- tsa_claims %>%
+  rename(Claim_Number =  `Claim Number`,
+         Date_Received = `Date Received`,
+         Incident_Date = `Incident Date`,
+         Airport_Code = `Airport Code`,
+         Airport_Name = `Airport Name`,
+         Airline_Name = `Airline Name`,
+         Claim_Type = `Claim Type`,
+         Claim_Site = `Claim Site`,
+         Claim_Amount = `Claim Amount`,
+         Close_Amount = `Close Amount`)
+TSA_claims
+```
+
+
+```{r}
+#Remove unwanted characters from specific variables, specifically Claim_Amount & Close_Amount
+
+TSA_claims <- TSA_claims %>%
+  mutate_if(is.character, str_replace_all, pattern = '[$]', replacement = '') %>%
+  mutate_if(is.character, str_replace_all, pattern = '[;]', replacement = '') %>%
+  #Convert data type for specific variables
+  mutate(
+         Date_Received = dmy(Date_Received),
+         Incident_Date = mdy(Incident_Date),
+         Airport_Code = as_factor(Airport_Code),
+         Claim_Type = as_factor(Claim_Type),
+         Claim_Site = as_factor(Claim_Site),
+         Claim_Amount = as.double(Claim_Amount),
+         Status = as_factor(Status),
+         Close_Amount = as.double(Close_Amount),
+         Disposition = as_factor(Disposition)
+         )
+
+#Verifying conversion to TSA_claims tbl
+str(TSA_claims)
+summary(TSA_claims)
+```
+Investigationg NAs introduced by coersion
+```{r}
+TSA_claims %>%
+  select(Claim_Amount) %>%
+  filter(is.na(as.double(Claim_Amount)))
+```
+```{r}
+ airports <- TSA_claims %>%
+  select(Claim_Number, Airport_Code, Airport_Name) %>%
+  dummy_cols(select_columns = "Airport_Code",
+                                   ignore_na = FALSE)
+
+airports
+
+mice::md.pattern(airports)
+```
+
+
+Incident Distribution by year
+```{r}
+Incident_distibution <- TSA_claims %>%
+  mutate(Incident_Year = as.numeric(format(Incident_Date, "%Y")),
+         Claim_Year = as.numeric(format(Date_Received, "%Y"))) %>%
+  select(Incident_Date, Incident_Year, Date_Received, Claim_Year, Claim_Amount, Close_Amount, Disposition) %>%
+  group_by(Incident_Year, Claim_Year) %>%
+  ggplot() +
+  geom_histogram(mapping = aes(x = Incident_Year),binwidth = 50, stat = "count", color = "slateblue", fill = "slategray") +
+  geom_histogram(mapping = aes(x = Claim_Year),binwidth = 50, stat = "count", color = "blue", fill = "gray", alpha = 0.5, fill = "dodge")
+  geom_line(aes(x = Year, y = count(Year), color = Disposition)) 
+
+Incident_distibution
+  
+```
+
+
+
+```{r}
+options(scipen = 999)
+
+TSA_claims %>%
+  select(Close_Amount, Disposition) %>%
+  group_by(Disposition) %>%
+  arrange(Disposition) %>%
+  filter(!is.na(Close_Amount), 
+         !is.na(Disposition)) %>%
+  mutate(log_CloseAmount = log(Close_Amount)) %>%
+  ggplot() +
+  geom_histogram(aes(x = Disposition, y= log_CloseAmount, color = Disposition), stat = "identity")
+  
+
+
+TSA_claims %>%
+  select(Claim_Amount, Disposition) %>%
+  group_by(Disposition) %>%
+  arrange(Disposition) %>%
+  filter(!is.na(Claim_Amount), 
+         !is.na(Disposition)) %>%
+  mutate(log_ClaimAmount = log(Claim_Amount)) %>%
+  ggplot() +
+  geom_histogram(aes(x = Disposition, y= log_ClaimAmount, color = Disposition), stat = "identity")
+```
+
+
+```{r}
+TSA_claims %>%
+  select(Airport_Code, Airport_Name) %>%
+  distinct(Airport_Code)
+
+TSA_claims %>%
+  mutate(Incident_Year = as.numeric(format(Incident_Date, "%Y")),
+         Claim_Year = as.numeric(format(Date_Received, "%Y"))) %>%
+  select(Airport_Code, Incident_Date, Incident_Year, Date_Received, Claim_Year, Claim_Amount, Close_Amount, Disposition) %>%
+  group_by(Incident_Year, Claim_Year) %>%
+  count(Airport_Code, Incident_Year) %>%
+  ggplot() +
+  geom_point(mapping = aes(x = n))
+
+
+
+
+
+```
+
+
+```{r}
+
+TSA_claims %>%
+  select(Date_Received, Incident_Date, Claim_Amount, Close_Amount, Disposition) %>%
+  mutate(log_claim = log(Claim_Amount),
+         log_close = log(Close_Amount)) %>%
+  filter(!is.na(log_claim),
+         !is.na(Incident_Date)) %>%
+  group_by(Incident_Date, Claim_Amount) %>%
+  arrange(Incident_Date) %>%
+  ggplot() +
+  geom_line(mapping = aes(x = Incident_Date, y = log_claim)) +
+  scale_x_date(date_labels = "%b-%y")
+   
+
+
+
+
+  
+
+TSA_claims <- TSA_claims %>%
+              filter(between(Claim_Amount, quantile(Claim_Amount, 0.1, na.rm = TRUE), x = 
+              quantile(Claim_Amount, 0.99, na.rm = TRUE)))
+```
+
+Approximately 1600 observations in the dataset have Incident Dates that occus after the date the claim was received (Date_Received). For the purposes of this project, we will modify the Incident_Date of those observations using the duration period derived and adjusting them to precede the Date received
+```{r}
+TSA_claims %>%
+  select(Date_Received, Incident_Date) %>%
+  mutate(Duration = Date_Received - Incident_Date) %>%
+  mutate(New_Incident_Date = ifelse(Duration < 0, Date_Received + Duration, Incident_Date)) %>%
+  mutate(New_Incident_Date = as.Date(New_Incident_Date))
+  
+  filter(duration < 0) %>%
+  mutate(modified_Incident_Date = Date_Received + duration)
+
+  a_age <-  today() - ymd(19790407)
+  a_age
+  x <- TSA_claims$New_Incident_Date
+  
+  
+  
+  
+```
+
+```{r}
+
+t <- TSA_claims %>%
+  select(Disposition) %>%
+  fastDummies::dummy_cols(Disposition)
+
+tplt <- t[ , -1]
+tb1 <- table(tplt$`Disposition_Approve in Full`)
+tb2 <- table(tplt$Disposition_Settle)
+tb3 <- table(tplt$Disposition_Deny)
+tb4 <- table(tplt$Disposition_NA)
+
+par(mfrow = c(2,2))
+
+barplot(tb1); barplot(tb2); barplot(tb3); barplot(tb4)
+
+```
+
+
+```{r}
+TSA_claims %>%
+  filter(!is.na(Disposition)) %>%
+  ggplot() +
+  geom_histogram(mapping = aes(x = Disposition), binwidth = 15, stat = "count", color = "slategrey", fill = "slategrey")
+                  
+```
+
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+#Disposition by Claim Type
+TSA_claims %>%
+  filter(!is.na(Disposition)) %>%
+  ggplot() +
+  geom_histogram(mapping = aes(x = Claim_Type), binwidth = 15, stat = "count", color = "slategrey", fill = "slategrey") +
+  coord_flip() +
+  facet_wrap(Disposition ~.)
+```
+
+
+
+```{r}
+TSA_claims %>%
+  filter(Claim_Amount > 10000)
+```
+
+
+```{r}
+numeric_to_cat <- function(x, lower, upper, by,
+                    sep = "-", above.char = "+") {
+  
+  labs <- c(paste(seq(lower, upper - by, by = by),
+                  seq(lower + by - 1, upper - 1, by = by),
+                  sep = sep),
+            paste(upper, above.char, sep = ""))
+  
+  cut(floor(x), breaks = c(seq(lower, upper, by = by), Inf),
+      right = FALSE, labels = labs)
+}
+
+
+Claim_bins <- TSA_claims %>%
+  select(Claim_Number, Claim_Amount, Close_Amount) %>%
+  mutate(Claim_cat = numeric_to_cat(Claim_Amount, 
+                                    lower = 0, 
+                                    upper = 300000, 
+                                    by = 1000),
+         Close_cat = numeric_to_cat(Close_Amount, 
+                                    lower = 0, 
+                                    upper = 250000, 
+                                    by = 1000),
+
+  )
+
+Claims <- full_join(TSA_claims, Claim_bins, by = "Claim_Number", suffix = c("", " ")) 
+
+TSA_claims %>%
+  select(Claim_Amount, Claim_cat, Close_Amount, Close_cat, Disposition) %>%
+  filter(!is.na(Claim_cat),
+         !is.na(Close_cat)) %>%
+  ggplot() +
+  geom_histogram(aes(x = Claim_cat, color = Disposition), binwidth = 2, stat = 'count', color = "lightblue", fill = "lightblue") +
+  geom_histogram(aes(x = Close_cat, color = Disposition), binwidth = 2, stat = 'count', color = "grey", fill = "grey") +
+  facet_wrap(Disposition ~.) +
+  theme_minimal()
+ 
+
+
+```
+
+
+
+```{r}
+library(Hmisc)
+library(kableExtra)
+library(dplyr)
+library(readr)
+
+mean_med <- TSA_claims %>%
+  select(Claim_Amount, Close_Amount) %>%
+  mutate(mean_ClaimAmount = impute(Claim_Amount, fun = mean),
+         mean_CloseAmount = impute(Close_Amount, fun = mean),
+         med_ClaimAmount = impute(Claim_Amount, fun = median),
+         med_CloseAmount = impute(Close_Amount, fun = median))
+
+View(mean_med)
+```
+
+
+
+```{r}
+
+im_TSA <- TSA_claims %>%
+  select(Claim_Amount, Close_Amount, Disposition)
+
+Disp <- fastDummies::dummy_cols(im_TSA, select_columns = "Disposition", ignore_na = TRUE)
+Dispo <- Disp[ , -3]
+
+
+
+options(scipen  = 999)
+
+#Dispo <- data.frame(scale(Disp))
+model <- glm(Claim_Amount ~ ., data = Dispo)
+summary(model)
+names(model)
+na_Claim <- is.na(im_TSA$Claim_Amount)
+im_TSA$Claim_Amount[na_Claim] <- predict(model, newdata = im_TSA[na_Claim, ])
+unscale(im_TSA$Claim_Amount[na_Claim])
+
+library(DMwR)
+knnImputation(Dispo, k = 10, scale = T, meth = "weighAvg")
+
+library(rpart)
+im_tsa <- TSA_claims %>%
+  select(Claim_Amount, Close_Amount)
+anova_mod <- rpart(Claim_Amount ~ ., data = im_tsa[!is.na(im_tsa$Claim_Amount), ], method="anova", na.action=na.omit)  # since ptratio is numeric.
+
+claim_pred <- predict(anova_mod, im_tsa[is.na(im_tsa$Claim_Amount), ])
+
+actuals <- TSA_claims$Claim_Amount[is.na(im_tsa$Claim_Amount)]
+predicteds <- claim_pred
+regr.eval(actuals, predicteds)
+
+library(mice)
+miceMod <- mice(im_tsa[, !names(im_tsa) %in% "medv"], method="rf")  # perform mice imputation, based on random forests.
+miceOutput <- complete(miceMod)  # generate the completed data.
+anyNA(miceOutput)
+
+im_tsa <- TSA_claims %>%
+  select(Claim_Amount, Close_Amount)
+
+# We will be using mice library in r
+library(mice)
+# Deterministic regression imputation via mice
+imp <- mice(im_tsa, method = "norm.predict", m = 2)
+
+# Store data
+data_imp <- complete(imp)
+# Multiple Imputation
+imp <- mice(im_tsa, m = 5)
+#build predictive model
+fit <- with(data = imp, lm(y ~ x + z))
+#combine results of all 5 models
+combine <- pool(fit)
+``` 
+
