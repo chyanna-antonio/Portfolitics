@@ -8,8 +8,8 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-```{r}
 #load libraries
+
 library(readr)
 library(tidyverse)
 library(dplyr)
@@ -18,21 +18,18 @@ library(tidyr)
 library(kableExtra)
 library(knitr)
 library(fastDummies)
-```
-
 
 CLEANING AND PROCESSING THE DATA
 
-```{r}
 #Loading original datast
 tsa_claims <- read_csv("tsa_claims.csv")
 
-#exploring data summary,  structure and types
+#exploring data summary, structure and types
+
 str(tsa_claims)
 summary(tsa_claims)
 
-```
-```{r}
+
 #Renaming the non-standard variables with standard names
 
 TSA_claims <- tsa_claims %>%
@@ -47,10 +44,7 @@ TSA_claims <- tsa_claims %>%
          Claim_Amount = `Claim Amount`,
          Close_Amount = `Close Amount`)
 TSA_claims
-```
 
-
-```{r}
 #Remove unwanted characters from specific variables, specifically Claim_Amount & Close_Amount
 
 TSA_claims <- TSA_claims %>%
@@ -70,7 +64,7 @@ TSA_claims <- TSA_claims %>%
          )
 
 #Verifying conversion to TSA_claims tbl
+
 str(TSA_claims)
 summary(TSA_claims)
-```
 
