@@ -68,3 +68,25 @@ TSA_claims <- TSA_claims %>%
 str(TSA_claims)
 summary(TSA_claims)
 
+Columns: Discusss exploration of the following variables
+1.  Claim_Number - NA
+2.  Date_Received - This represents the dates when claims where received by the TSA.
+3.  Incident_Date - This is the date the actual incident ocurred that lead to a claim
+    Explore possible relationships between the time an incident and when a claim is filed for said incident
+4. Airport_Code - FAA designated code for a specific airport
+5. Airport_Name - Name of the Airport
+    Verify that all listed Airport codes have corresponding Airport names. We will attempt to convert airport codes to dummy       variables and apply categorical variable imputation methods to see if we can address NAs in these columns
+6.  Airline_Name
+7.  Claim_Type - Type of claim
+    Convert to dummy variables and apply imputation techniques to address NAs
+8.  Claim_Site - where in the Airport, the incident may have occurred
+    Convert to dummy variables and apply imputation techniques to address NAs
+9.  Item - Items for which a claim is being made
+10. Claim_Amount - amount being requested by the claimant
+    Apply imputation techniques to address NAs
+11. Status - preliminary status of claim
+    Convert to dummy variables and apply imputation techniques to address NAs
+12. Close_Amount - amount that was granted by the TSA
+    Apply imputation techniques to address NAs
+13. Disposition - Final decision
+    Response variable
