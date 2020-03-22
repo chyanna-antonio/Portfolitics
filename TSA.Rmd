@@ -91,6 +91,17 @@ Columns: Discusss exploration of the following variables
 13. Disposition - Final decision
     Response variable
 
+Inspecting NAs in all columns
+
+na_tsa <- TSA_tbl %>%
+  select(everything()) %>%
+  summarise_all(funs(sum(is.na(.)))) 
+
+t(na_tsa)
+
+
+
+
 DATA COLUMNS
 
 Approximately 1600 observations in the dataset have Incident Dates that occus after the date the claim was received (Date_Received). For the purposes of this project, we will modify the Incident_Date of those observations using the duration period derived and adjusting them to precede the Date received
