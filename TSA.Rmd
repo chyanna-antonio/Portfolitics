@@ -111,9 +111,9 @@ TSA_claims %>%
   mutate(New_Incident_Date = as.Date(New_Incident_Date, origin = "1970-01-01"))
 
 
-3/22/2020
+*3/22/2020*
 
-Exploring the Relationship between "Status" and "Disposition" in addressing NAs for Claim_Amount, Close_Amount & Disposition
+##Exploring the Relationship between "Status" and "Disposition" in addressing NAs for Claim_Amount, Close_Amount & Disposition
 
 options(scipen = 999) #Remove scientific notations for large numbers
 
