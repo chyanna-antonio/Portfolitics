@@ -100,9 +100,7 @@ na_tsa <- TSA_tbl %>%
 t(na_tsa)
 
 
-
-
-DATA COLUMNS
+DATE COLUMNS
 
 Approximately 1600 observations in the dataset have Incident Dates that occus after the date the claim was received (Date_Received). For the purposes of this project, we will modify the Incident_Date of those observations using the duration period derived and adjusting them to precede the Date received
 
@@ -111,3 +109,118 @@ TSA_claims %>%
   mutate(Duration = Date_Received - Incident_Date) %>%
   mutate(New_Incident_Date = ifelse(Duration < 0, Date_Received + Duration, as.Date(Incident_Date))) %>%
   mutate(New_Incident_Date = as.Date(New_Incident_Date, origin = "1970-01-01"))
+
+
+3/22/2020
+
+Exploring the Relationship between "Status" and "Disposition" in addressing NAs for Claim_Amount, Close_Amount & Disposition
+
+options(scipen = 999) #Remove scientific notations for large numbers
+
+#Count of the different status levels
+TSA_claims %>%
+  count(Status)
+
+#There are just 8 missing values in the Status variable
+TSA_claims %>%
+  select(Status) %>%
+  filter(is.na(Status))
+
+#Filter observations with Approved status and Claim/Close_Amount is NA
+#133 observations in which the status and disposition are both approved but the Closed_Amount is NA
+#213 observations in which the status and disposition are both approved but the Claim_Amount is NA
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Approved",
+         is.na(Close_Amount))
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Approved",
+         !is.na(Claim_Amount)) %>%
+  arrange(desc(Claim_Amount))
+
+
+#Filter observations with Settled status and Claim/Close_Amount is NA
+#0 observations in which the status and disposition are both settled but the Closed_Amount is NA
+#214 observations in which the status and disposition are both settled but the Claim_Amount is NA
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Settled",
+         is.na(Close_Amount)) 
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Settled",
+         is.na(Claim_Amount)) 
+
+
+#Filter observations with Cancelled status and Claim/Close_Amount is NA
+#2863 observations in which the status is Cancelled but the Closed_Amount is NA. All Disposition is also NA
+#1113 observations in which the status is Cancelled but the Claim_Amount is NA. All Disposition is also NA and Close_Amount is either NA or 0
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Canceled",
+         is.na(Close_Amount))
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Canceled",
+         is.na(Claim_Amount))
+
+
+#Filter observations with Denied status and Claim/Close_Amount is NA
+#1277 observations in which the status and disposition are both denied but the Close_Amount is NA
+#331 observations in which the status and disposition are both denied but the Claim_Amount is NA
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Denied",
+         is.na(Close_Amount))
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Denied",
+         !is.na(Claim_Amount)) %>%
+  arrange(desc(Claim_Amount))
+
+#Filter observations with Insufficient status and Claim/Close_Amount is NA
+#5381 observations in which the status is Insufficient but the Close_Amount is NA. All Disposition is also NA
+#2096 observations in which the status is Insufficient but the Claim_Amount is NA. All Disposition is also NA or Deny
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Insufficient one of the following items required: sum certain statement of fact signature location of incident and date.",
+         is.na(Close_Amount))
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Insufficient one of the following items required: sum certain statement of fact signature location of incident and date.",
+         is.na(Claim_Amount))
+
+#In litigation
+#108 observations in which the status is In Litigation and Close_Amount is NA. Grouped by disposition 
+#0 observations in which the status is In Litigation and Claim_Amount is NA.
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "In litigation",
+         is.na(Close_Amount)) %>%
+  group_by(Disposition) %>%
+  arrange(Disposition)
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "In litigation",
+         is.na(Claim_Amount))
+
+#Closed as a contractor claim - Claims were Airport contractors erroneously file claims as passengers
+#42 observations in which the status is "Closed as a contractor claim" and Close_Amount is NA. 
+#57 observations in which the status is "Closed as a contractor claim" and Claim_Amount is NA.
+TSA_claims %>%
+  select(Item, Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Closed as a contractor claim",
+         is.na(Close_Amount))
+
+TSA_claims %>%
+  select(Status, Claim_Amount, Close_Amount, Disposition) %>%
+  filter(Status == "Closed as a contractor claim",
+         is.na(Claim_Amount))
