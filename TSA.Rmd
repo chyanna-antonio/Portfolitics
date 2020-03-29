@@ -224,3 +224,15 @@ TSA_claims %>%
   select(Status, Claim_Amount, Close_Amount, Disposition) %>%
   filter(Status == "Closed as a contractor claim",
          is.na(Claim_Amount))
+   
+   
+*CA: 3-29-2020*
+#Clean up the values in Status:
+#Code "Approved" as "Approve in Full"
+#Code "Denied" as "Deny"
+#Code "Settled" as "Settle"
+TSA_claims <- TSA_claims %>%
+  mutate(Status = replace(Status, Status == 'Approved', 'Approve in Full'),
+         Status = replace(Status, Status == 'Denied', 'Deny'),
+         Status = replace(Status, Status == 'Settled', 'Settle'))
+
